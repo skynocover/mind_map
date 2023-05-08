@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import 'tailwindcss/tailwind.css';
+import 'antd/dist/reset.css';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Project from './pages/Project.tsx';
 import Projects from './pages/Projects.tsx';

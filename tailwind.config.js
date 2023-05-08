@@ -1,8 +1,11 @@
-export const mode = 'jit';
-export const purge = ['./index.html', './src/**/*.{js,jsx,ts,tsx,vue}'];
-export const darkMode = false;
-export const theme = {
-  extend: {},
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+  corePlugins: {
+    preflight: false,
+  },
 };
-export const variants = {};
-export const plugins = [];

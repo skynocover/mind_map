@@ -1,13 +1,5 @@
-import React, { useCallback, useRef } from 'react';
-import ReactFlow, {
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  useReactFlow,
-  ReactFlowProvider,
-  useStore,
-  Controls,
-} from 'reactflow';
+import { useCallback } from 'react';
+import { useStore } from 'reactflow';
 
 const transformSelector = (state: any) => state.transform;
 const Sidebar = ({ nodes, setNodes }: any) => {
@@ -24,10 +16,6 @@ const Sidebar = ({ nodes, setNodes }: any) => {
 
   return (
     <aside>
-      <div className="description">
-        This is an example of how you can access the internal state outside of the ReactFlow
-        component.
-      </div>
       <div className="title">Zoom & pan transform</div>
       <div className="transform">
         [{transform[0].toFixed(2)}, {transform[1].toFixed(2)}, {transform[2].toFixed(2)}]
