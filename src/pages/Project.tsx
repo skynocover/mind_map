@@ -8,13 +8,15 @@ import ReactFlow, {
   ReactFlowProvider,
   Controls,
   Node,
+  Edge,
+  XYPosition,
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
-import { getAuth } from 'firebase/auth';
+
 import { useParams, Link } from 'react-router-dom';
 import { getProject, setProject } from '../utils/firestore';
-
+import { AppContext } from '../AppContext';
 import Sidebar from '../components/SideBar';
 
 const initialNodes = [
@@ -28,29 +30,32 @@ const initialNodes = [
   },
 ];
 
-const getNewNode = (x: number, y: number): Node => {
-  const id = `RNN_${+new Date()}`;
+const getNewNode = (position: XYPosition): Node => {
+  const id = `${+new Date()}`;
   return {
     id,
     data: { label: `Node ${id}` },
-    position: { x, y },
+    position,
   };
 };
 
-const fitViewOptions = {
-  padding: 3,
-};
+const fitViewOptions = { padding: 3 };
+
+let preX = 0;
+let preY = 0;
+let changeNodeIds: string[] = [];
 
 const AddNodeOnEdgeDrop = () => {
+  const appCtx = React.useContext(AppContext);
   const reactFlowWrapper: any = useRef<any>(null);
   const connectingNodeId = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { setViewport, project } = useReactFlow();
+
   const [rfInstance, setRfInstance] = React.useState<any>(null);
-  const { getViewport, setViewport } = useReactFlow();
   const [projectName, setProjectName] = React.useState<string>('');
 
-  const { project } = useReactFlow();
   const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), []);
 
   const onConnectStart = useCallback((_: any, { nodeId }: any) => {
@@ -58,40 +63,38 @@ const AddNodeOnEdgeDrop = () => {
   }, []);
 
   const { projectId } = useParams();
-  const auth = getAuth();
-  const user = auth.currentUser;
 
   const init = async () => {
-    if (user && projectId) {
-      const project = await getProject(user.uid, projectId);
+    if (appCtx.user && projectId) {
+      const project = await getProject(appCtx.user.uid, projectId);
       if (project) {
         const { projectName, flow } = project;
         setProjectName(projectName);
         if (flow) {
-          // const { x = 0, y = 0, zoom = 1 } = flow.viewport;
-          setViewport(flow.viewport);
+          const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+          console.log({ x, y, zoom });
+          setViewport({ x, y, zoom });
           setNodes(flow.nodes || []);
           setEdges(flow.edges || []);
-          // setViewport({ x, y, zoom });
         }
       }
     }
   };
   React.useEffect(() => {
     init();
-  }, [projectId]);
+  }, [projectId, appCtx.user, project]);
 
   const onConnectEnd = useCallback(
     (event: any) => {
       const targetIsPane = event.target.classList.contains('react-flow__pane');
 
       if (targetIsPane) {
-        // we need to remove the wrapper bounds, in order to get the correct position
         // eslint-disable-next-line no-unsafe-optional-chaining
         const { top, left } = reactFlowWrapper?.current?.getBoundingClientRect();
-        console.log({ x: event.clientX, left, y: event.clientY, top });
 
-        const newNode = getNewNode(event.clientX - 700, event.clientY - 350);
+        const newNode = getNewNode(
+          project({ x: event.clientX - left - 75, y: event.clientY - top }),
+        );
         setNodes((nds: any[]) => nds.concat(newNode));
         setEdges((eds: any[]) =>
           eds.concat({ id: newNode.id, source: connectingNodeId.current, target: newNode.id }),
@@ -101,7 +104,7 @@ const AddNodeOnEdgeDrop = () => {
     [project],
   );
 
-  const onNodeDoubleClick = (event: any, node: any) => {
+  const onNodeDoubleClick = (event: any, node: Node) => {
     const label = prompt('Enter a new label for the node:', node.data.label);
 
     if (label) {
@@ -118,14 +121,12 @@ const AddNodeOnEdgeDrop = () => {
   };
 
   const onSave = useCallback(async () => {
-    console.log('aaaa', projectName);
     if (rfInstance) {
       const flow = rfInstance.toObject();
       // localStorage.setItem('temp', JSON.stringify(flow));
 
-      const user = auth.currentUser;
-      if (user && projectId) {
-        await setProject(user.uid, { id: projectId, flow, projectName });
+      if (appCtx.user && projectId) {
+        await setProject(appCtx.user.uid, { id: projectId, flow, projectName });
       }
     }
   }, [rfInstance, projectName]);
@@ -136,65 +137,76 @@ const AddNodeOnEdgeDrop = () => {
       setProjectName(projectName);
       if (rfInstance) {
         const flow = rfInstance.toObject();
-        const user = auth.currentUser;
-        if (user && projectId) {
-          setProject(user.uid, { id: projectId, flow, projectName });
+        if (appCtx.user && projectId) {
+          setProject(appCtx.user.uid, { id: projectId, flow, projectName });
         }
       }
     }
   };
 
-  const onRestore = useCallback(() => {
-    // const restoreFlow = async () => {
-    //   const flow = JSON.parse(localStorage.getItem('temp') || '');
-    //   if (flow) {
-    //     const { x = 0, y = 0, zoom = 1 } = flow.viewport;
-    //     setNodes(flow.nodes || []);
-    //     setEdges(flow.edges || []);
-    //     setViewport({ x, y, zoom });
-    //   }
-    // };
-    // restoreFlow();
-  }, [setNodes, setViewport]);
+  const onNodeDragStart = (_: React.MouseEvent<Element, MouseEvent>, node: Node) => {
+    preX = node.position.x;
+    preY = node.position.y;
+    // 取得所有需要改變的子node
+    changeNodeIds = findChildNodes(node.id).map((node) => node.id);
+  };
 
-  const onAdd = useCallback(() => {
-    // setNodes((nds) =>
-    //   nds.concat(
-    //     getNewNode(Math.random() * window.innerWidth - 100, Math.random() * window.innerHeight),
-    //   ),
-    // );
-  }, [setNodes]);
+  const findChildNodes = (nodeId: string): Edge[] => {
+    const childNodes = edges.filter((edge) => edge.source === nodeId);
+    return childNodes.flatMap((childNode) => [childNode, ...findChildNodes(childNode.id)]);
+  };
+
+  const onNodeDrag = (_: React.MouseEvent<Element, MouseEvent>, node: Node) => {
+    const dx = node.position.x - preX;
+    const dy = node.position.y - preY;
+    preX = node.position.x;
+    preY = node.position.y;
+
+    // const changeNodeIds = findChildNodes(node.id).map((node) => node.id);
+    const newNodes = nodes.map((nd) => {
+      if (changeNodeIds.includes(nd.id) || nd.id === node.id) {
+        return { ...nd, position: { x: nd.position.x + dx, y: nd.position.y + dy } };
+      }
+      return nd;
+    });
+    setNodes(newNodes);
+  };
 
   return (
-    <div
-      className="flex"
-      ref={reactFlowWrapper}
-      style={{ width: '1200px', height: '900px', backgroundColor: 'black' }}
-    >
-      <div className="save__controls">
-        <antd.Button onClick={changeName}>{'專案: ' + projectName}</antd.Button>
-        <antd.Button onClick={onSave}>save</antd.Button>
-        {/* <antd.Button onClick={onAdd}>add node</antd.Button> */}
-        <antd.Button>
-          <Link to={'/projects'}>GoBack</Link>
-        </antd.Button>
+    <div className="flex h-screen">
+      <div className="flex-1 bg-black" ref={reactFlowWrapper}>
+        <ReactFlow
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
+          // onNodeDragStop={onNodeDragStop}
+          onNodeDoubleClick={onNodeDoubleClick}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
+          fitView
+          fitViewOptions={fitViewOptions}
+          onInit={setRfInstance}
+        >
+          <Controls />
+        </ReactFlow>
       </div>
-      <ReactFlow
-        onNodeDoubleClick={onNodeDoubleClick}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onConnectStart={onConnectStart}
-        onConnectEnd={onConnectEnd}
-        fitView
-        fitViewOptions={fitViewOptions}
-        onInit={setRfInstance}
-      >
-        <Controls />
-      </ReactFlow>
-      <Sidebar nodes={nodes} setNodes={setNodes} />
+      <div className="w-96">
+        <div className="flex justify-end space-x-2">
+          <antd.Button onClick={changeName}>{'專案: ' + projectName}</antd.Button>
+          <antd.Button type="primary" onClick={onSave}>
+            save
+          </antd.Button>
+          {/* <antd.Button onClick={onAdd}>add node</antd.Button> */}
+          <antd.Button type="primary">
+            <Link to={'/projects'}>GoBack</Link>
+          </antd.Button>
+        </div>
+        <Sidebar nodes={nodes} setNodes={setNodes} />
+      </div>
     </div>
   );
 };
