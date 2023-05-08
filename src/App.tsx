@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
-import './App.css';
+// import './App.css';
 import { AppContext } from './AppContext';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 
 function App() {
   const auth = getAuth();
-  const user = auth.currentUser;
+  const { user } = React.useContext(AppContext);
+
   const provider = new GoogleAuthProvider();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user) {
+      navigate('/projects');
+    }
+  }, [user]);
 
   return (
     <>
@@ -33,7 +42,7 @@ function App() {
                   const token = credential.accessToken;
                   const user = result.user;
                   console.log({ user, token });
-                  // redirect('/projects');
+                  navigate('/projects');
                 }
               })
               .catch((error) => {

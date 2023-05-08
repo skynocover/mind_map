@@ -5,7 +5,7 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import * as antd from 'antd';
 
 interface AppContextProps {
-  //   user: User | undefined;
+  user: User | undefined;
   //   firestore: Firestore;
   setModal: React.Dispatch<any>;
 }
@@ -53,7 +53,7 @@ const AppProvider = ({ children }: AppProviderProps) => {
   /////////////////////////////////////////////////////
 
   return (
-    <AppContext.Provider value={{ setModal }}>
+    <AppContext.Provider value={{ user, setModal }}>
       {children}
 
       {modal && (
