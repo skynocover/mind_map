@@ -15,9 +15,10 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import { useParams, Link } from 'react-router-dom';
-import { getProject, setProject } from '../utils/firestore';
+import { getProject, setProject, Project } from '../utils/firestore';
 import { AppContext } from '../AppContext';
 import Sidebar from '../components/SideBar';
+import Members from '../components/Admin';
 
 const initialNodes = [
   {
@@ -55,6 +56,7 @@ const AddNodeOnEdgeDrop = () => {
 
   const [rfInstance, setRfInstance] = React.useState<any>(null);
   const [projectName, setProjectName] = React.useState<string>('');
+  const [pro, setPro] = React.useState<Project>();
 
   const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), []);
 
@@ -66,9 +68,10 @@ const AddNodeOnEdgeDrop = () => {
 
   const init = async () => {
     if (appCtx.user && projectId) {
-      const project = await getProject(appCtx.user.uid, projectId);
+      const project = await getProject(projectId);
       if (project) {
         const { projectName, flow } = project;
+        setPro(project);
         setProjectName(projectName);
         if (flow) {
           const { x = 0, y = 0, zoom = 1 } = flow.viewport;
@@ -126,7 +129,7 @@ const AddNodeOnEdgeDrop = () => {
       // localStorage.setItem('temp', JSON.stringify(flow));
 
       if (appCtx.user && projectId) {
-        await setProject(appCtx.user.uid, { id: projectId, flow, projectName });
+        await setProject({ id: projectId, flow, projectName });
       }
     }
   }, [rfInstance, projectName]);
@@ -138,7 +141,7 @@ const AddNodeOnEdgeDrop = () => {
       if (rfInstance) {
         const flow = rfInstance.toObject();
         if (appCtx.user && projectId) {
-          setProject(appCtx.user.uid, { id: projectId, flow, projectName });
+          setProject({ id: projectId, flow, projectName });
         }
       }
     }
@@ -172,9 +175,29 @@ const AddNodeOnEdgeDrop = () => {
     setNodes(newNodes);
   };
 
+  const [debug, setDebug] = React.useState<boolean>(false);
+
   return (
     <div className="flex h-screen">
       <div className="flex-1 bg-black" ref={reactFlowWrapper}>
+        {pro && <Members project={pro} rfInstance={rfInstance} />}
+        <div className="flex fixed right-0 z-10 space-x-0">
+          <antd.Button type="primary" onClick={onSave}>
+            save
+          </antd.Button>
+          <antd.Button type="primary">
+            <Link to={'/projects'}>GoBack</Link>
+          </antd.Button>
+          <antd.Button
+            type="primary"
+            onClick={() => {
+              setDebug(!debug);
+            }}
+          >
+            Show Debug
+          </antd.Button>
+        </div>
+
         <ReactFlow
           onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
@@ -193,20 +216,13 @@ const AddNodeOnEdgeDrop = () => {
         >
           <Controls />
         </ReactFlow>
+        <div className=""></div>
       </div>
-      <div className="w-96">
-        <div className="flex justify-end space-x-2">
-          <antd.Button onClick={changeName}>{'專案: ' + projectName}</antd.Button>
-          <antd.Button type="primary" onClick={onSave}>
-            save
-          </antd.Button>
-          {/* <antd.Button onClick={onAdd}>add node</antd.Button> */}
-          <antd.Button type="primary">
-            <Link to={'/projects'}>GoBack</Link>
-          </antd.Button>
+      {debug && (
+        <div className="w-96">
+          <Sidebar nodes={nodes} setNodes={setNodes} />
         </div>
-        <Sidebar nodes={nodes} setNodes={setNodes} />
-      </div>
+      )}
     </div>
   );
 };

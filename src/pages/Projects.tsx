@@ -8,7 +8,8 @@ import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from 'firebase
 import { createId } from '@paralleldrive/cuid2';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { firestore } from '../utils/firebase';
-import { getAllProjects, Project } from '../utils/firestore';
+import { getAllProjects, Project, createProject } from '../utils/firestore';
+
 const columns = [
   {
     title: 'ID',
@@ -22,21 +23,22 @@ const columns = [
   },
   {
     title: 'Action',
-    dataIndex: '',
     key: 'x',
     render: (item: any) => (
-      <>
-        <antd.Button>
-          <Link to={'/project/' + item.id}>GoTo</Link>
+      <div className="flex space-x-2">
+        <antd.Button type="primary">
+          <Link to={'/project/' + item.id}>Edit</Link>
         </antd.Button>
-        <a>Delete</a>
-      </>
+        <antd.Button type="ghost">Delete</antd.Button>
+      </div>
     ),
   },
 ];
+// TODO:
+// 組織人員管理
+// public的心智圖
 
 const Projects = () => {
-  const appCtx = React.useContext(AppContext);
   const auth = getAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const addProject = async () => {
@@ -44,11 +46,13 @@ const Projects = () => {
     const user = auth.currentUser;
 
     if (user && projectName) {
-      await setDoc(doc(firestore, 'mindMap', 'projects', user.uid, createId()), {
-        // projectId: createId(),
-        projectName,
-        // content: {},
-      });
+      //   await setDoc(doc(firestore, 'mindMap', 'projects', user.uid, createId()), {
+      //     // projectId: createId(),
+      //     projectName,
+      //     // content: {},
+      //   });
+      //   init();
+      createProject(user.uid, projectName);
       init();
     }
   };
@@ -65,7 +69,7 @@ const Projects = () => {
   }, [user]);
 
   return (
-    <>
+    <div className="m-2">
       <div className="flex justify-end mb-2">
         <antd.Button type="primary" onClick={addProject}>
           Add
@@ -79,7 +83,7 @@ const Projects = () => {
           pagination={false}
         />
       </antd.Spin>
-    </>
+    </div>
   );
 };
 
