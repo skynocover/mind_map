@@ -9,17 +9,31 @@ import {
   or,
   Firestore,
   deleteDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import { createId } from '@paralleldrive/cuid2';
+
 import { firestore } from './firebase';
+
+const initNode = [
+  {
+    id: '0',
+    type: 'input',
+    data: { label: 'Node' },
+    position: { x: 0, y: 50 },
+    width: 150,
+    height: 40,
+  },
+];
 
 export interface Project {
   id: string;
   projectName: string;
+  public: boolean;
   users?: string[];
   admins?: string[];
   readers?: string[];
-  flow?: any;
+  flow: any;
 }
 
 export const getAllProjects = async (userId: string): Promise<Project[]> => {
@@ -36,8 +50,8 @@ export const getAllProjects = async (userId: string): Promise<Project[]> => {
 
   const querySnapshot = await getDocs(query2);
   querySnapshot.forEach((doc) => {
-    const { projectName } = doc.data();
-    projects.push({ id: doc.id, projectName });
+    const { projectName, public: p, flow } = doc.data();
+    projects.push({ id: doc.id, projectName, public: p, flow });
   });
 
   return projects;
@@ -49,6 +63,7 @@ export const createProject = async (userId: string, projectName: string) => {
     admins: [userId],
     readers: [],
     users: [],
+    public: false,
   });
 };
 
@@ -58,7 +73,7 @@ export const deleteProject = async (projectId: string) => {
 
 export class ProjectService {
   private readonly db: Firestore;
-  private project: Project = { id: '', projectName: '' };
+  private project: Project = { id: '', projectName: '', public: false, flow: initNode };
 
   constructor(projectId: string) {
     this.db = firestore;
@@ -69,9 +84,9 @@ export class ProjectService {
     const docRef = doc(this.db, 'organizations', this.project.id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      const { projectName, flow, admins, users, readers } = docSnap.data();
+      const { projectName, flow, admins, users, readers, public: p } = docSnap.data();
 
-      this.project = { id: this.project.id, projectName, flow, admins, users, readers };
+      this.project = { id: this.project.id, projectName, flow, admins, users, readers, public: p };
     }
     return this;
   }
@@ -80,12 +95,11 @@ export class ProjectService {
     return this.project;
   }
 
-  async setProject(project: Project) {
-    await setDoc(
-      doc(this.db, 'organizations', project.id),
-      { flow: project.flow, projectName: project.projectName },
-      { merge: true },
-    );
+  async updateProject(project: Project) {
+    await updateDoc(doc(this.db, 'organizations', project.id), {
+      flow: project.flow,
+      projectName: project.projectName,
+    });
   }
 
   //////////////////////////  Member   //////////////////////////////////////
@@ -95,11 +109,7 @@ export class ProjectService {
     if (!this.project[type]?.includes(email)) {
       this.project[type]?.push(email);
     }
-    await setDoc(
-      doc(this.db, 'organizations', this.project.id),
-      { ...this.project },
-      { merge: true },
-    );
+    await updateDoc(doc(this.db, 'organizations', this.project.id), { ...this.project });
   }
 
   async removeMember(_email: string) {
@@ -107,11 +117,7 @@ export class ProjectService {
     this.project.admins = this.project.admins?.filter((v) => v != email);
     this.project.readers = this.project.readers?.filter((v) => v != email);
     this.project.users = this.project.users?.filter((v) => v != email);
-    await setDoc(
-      doc(this.db, 'organizations', this.project.id),
-      { ...this.project },
-      { merge: true },
-    );
+    await updateDoc(doc(this.db, 'organizations', this.project.id), { ...this.project });
   }
 
   ///////////////////////// Auth  ///////////////////////////////////////

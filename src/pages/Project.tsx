@@ -1,5 +1,6 @@
-import React, { useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useRef } from 'react';
 import * as antd from 'antd';
+
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -11,11 +12,11 @@ import ReactFlow, {
   Edge,
   XYPosition,
 } from 'reactflow';
-
 import 'reactflow/dist/style.css';
 
 import { useParams, Link } from 'react-router-dom';
-import { ProjectService, Project } from '../utils/firestore';
+
+import { ProjectService } from '../utils/firestore';
 import { AppContext } from '../AppContext';
 import Sidebar from '../components/SideBar';
 import Admin from '../components/Admin';
@@ -52,7 +53,7 @@ const AddNodeOnEdgeDrop = () => {
   const connectingNodeId = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { setViewport, project } = useReactFlow();
+  const { setViewport, project: rfProject } = useReactFlow();
 
   const [rfInstance, setRfInstance] = React.useState<any>(null);
   const [projectName, setProjectName] = React.useState<string>('');
@@ -71,25 +72,27 @@ const AddNodeOnEdgeDrop = () => {
     const projectService = new ProjectService(projectId || '');
     await projectService.init();
     setProjectService(projectService);
+
     const project = projectService.getProject();
+    // TODO: 刪除
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     window.project = project;
-    if (project) {
-      const { projectName, flow } = project;
-      setProjectName(projectName);
-      if (flow) {
-        const { x = 0, y = 0, zoom = 1 } = flow.viewport;
-        setViewport({ x, y, zoom });
-        setNodes(flow.nodes || []);
-        setEdges(flow.edges || []);
-      }
+
+    const { projectName, flow } = project;
+    setProjectName(projectName);
+
+    if (flow) {
+      const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+      setViewport({ x, y, zoom });
+      setNodes(flow.nodes || []);
+      setEdges(flow.edges || []);
     }
   }, [projectId, setEdges, setNodes, setViewport]);
 
   React.useEffect(() => {
     init();
-  }, [projectId, appCtx.user, project, init]);
+  }, [projectId, appCtx.user, rfProject, init]);
 
   const onConnectEnd = useCallback(
     (event: any) => {
@@ -100,7 +103,7 @@ const AddNodeOnEdgeDrop = () => {
         const { top, left } = reactFlowWrapper?.current?.getBoundingClientRect();
 
         const newNode = getNewNode(
-          project({ x: event.clientX - left - 75, y: event.clientY - top }),
+          rfProject({ x: event.clientX - left - 75, y: event.clientY - top }),
         );
         setNodes((nds: any[]) => nds.concat(newNode));
         setEdges((eds: any[]) =>
@@ -108,7 +111,7 @@ const AddNodeOnEdgeDrop = () => {
         );
       }
     },
-    [project],
+    [rfProject],
   );
 
   const onNodeDoubleClick = (event: any, node: Node) => {
@@ -132,11 +135,17 @@ const AddNodeOnEdgeDrop = () => {
       const flow = rfInstance.toObject();
       // localStorage.setItem('temp', JSON.stringify(flow));
 
-      if (appCtx.user && projectId) {
-        await projectService?.setProject({ id: projectId, flow, projectName });
+      if (projectService) {
+        const project = projectService.getProject();
+        await projectService?.updateProject({
+          id: project.id,
+          flow,
+          projectName,
+          public: project.public,
+        });
       }
     }
-  }, [rfInstance, projectName]);
+  }, [rfInstance, projectService, projectName]);
 
   const onNodeDragStart = (_: React.MouseEvent<Element, MouseEvent>, node: Node) => {
     preX = node.position.x;

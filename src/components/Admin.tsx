@@ -24,8 +24,8 @@ const Admin = ({
 
   const members: member[] = [];
   project.admins?.map((a) => members.push({ userEmail: a, role: 'admin' }));
-  project.users?.map((a) => members.push({ userEmail: a, role: 'users' }));
-  project.readers?.map((a) => members.push({ userEmail: a, role: 'readers' }));
+  project.users?.map((a) => members.push({ userEmail: a, role: 'user' }));
+  project.readers?.map((a) => members.push({ userEmail: a, role: 'reader' }));
 
   const columns = [
     {
@@ -60,7 +60,12 @@ const Admin = ({
     if (projectName) {
       if (rfInstance) {
         const flow = rfInstance.toObject();
-        await projectService.setProject({ id: project.id, flow, projectName });
+        await projectService.updateProject({
+          id: project.id,
+          flow,
+          projectName,
+          public: project.public,
+        });
         refresh();
       }
     }

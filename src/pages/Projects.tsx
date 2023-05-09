@@ -4,15 +4,20 @@ import Swal from 'sweetalert2';
 import { AppContext } from '../AppContext';
 import { Link } from 'react-router-dom';
 import { Project, getAllProjects, createProject, deleteProject } from '../utils/firestore';
+import { Header } from '../components/Header';
+import { useNavigate } from 'react-router-dom';
 
 const Projects = () => {
   const appCtx = React.useContext(AppContext);
   const [projects, setProjects] = React.useState<Project[]>([]);
+  const navigate = useNavigate();
 
   const init = useCallback(async () => {
     if (appCtx.user) {
       const projects = await getAllProjects(appCtx.user.email || '');
       setProjects(projects);
+    } else {
+      navigate('/login');
     }
   }, [appCtx.user]);
 
@@ -72,13 +77,14 @@ const Projects = () => {
   ];
 
   return (
-    <div className="m-2">
-      <div className="flex justify-end mb-2">
-        <antd.Button type="primary" onClick={addProject}>
-          Add
-        </antd.Button>
-      </div>
-      <antd.Spin spinning={false}>
+    <>
+      <Header />
+      <div className="m-2">
+        <div className="flex justify-end mb-2">
+          <antd.Button type="primary" onClick={addProject}>
+            Add
+          </antd.Button>
+        </div>
         <antd.Table
           scroll={{ x: 800 }}
           dataSource={projects.map((p) => {
@@ -87,8 +93,8 @@ const Projects = () => {
           columns={columns}
           pagination={false}
         />
-      </antd.Spin>
-    </div>
+      </div>
+    </>
   );
 };
 
