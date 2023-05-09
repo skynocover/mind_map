@@ -1,76 +1,109 @@
 import * as antd from 'antd';
 import React from 'react';
-import { PlusOutlined } from '@ant-design/icons';
+
+import Swal from 'sweetalert2';
 import { AppContext } from '../AppContext';
-import { AddProject } from './AddProject';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from 'firebase/firestore';
-import { createId } from '@paralleldrive/cuid2';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import { firestore } from '../utils/firebase';
-
-import { ProjectService, Project } from '../utils/firestore';
-
-const columns = [
-  {
-    title: 'identity',
-    dataIndex: 'identity',
-    key: 'identity',
-  },
-  {
-    title: 'UserId',
-    dataIndex: 'userId',
-    key: 'userId',
-  },
-  {
-    title: 'Action',
-    key: 'x',
-    render: (item: any) => (
-      <div className="flex space-x-2">
-        <antd.Button type="primary">
-          <Link to={'/project/' + item.id}>Edit</Link>
-        </antd.Button>
-        <antd.Button type="ghost">Delete</antd.Button>
-      </div>
-    ),
-  },
-];
-
-const projectService = new ProjectService();
+import { ProjectService } from '../utils/firestore';
 
 interface member {
-  userId: string;
-  identity: string;
+  userEmail: string;
+  role: string;
 }
 
-const Admin = ({ project, rfInstance }: { project: Project; rfInstance: any }) => {
-  console.log(project);
-
-  const [projectName, setProjectName] = React.useState<string>('');
+const Admin = ({
+  projectService,
+  rfInstance,
+  refresh,
+}: {
+  projectService: ProjectService;
+  rfInstance: any;
+  refresh: any;
+}) => {
+  const appCtx = React.useContext(AppContext);
+  const project = projectService.getProject();
 
   const members: member[] = [];
-  project.admins?.map((a) => {
-    members.push({ userId: a, identity: 'admin' });
-  });
-  project.users?.map((a) => {
-    members.push({ userId: a, identity: 'users' });
-  });
-  project.readers?.map((a) => {
-    members.push({ userId: a, identity: 'readers' });
-  });
+  project.admins?.map((a) => members.push({ userEmail: a, role: 'admin' }));
+  project.users?.map((a) => members.push({ userEmail: a, role: 'users' }));
+  project.readers?.map((a) => members.push({ userEmail: a, role: 'readers' }));
 
-  React.useEffect(() => {
-    setProjectName(project.projectName);
-  }, []);
+  const columns = [
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+    },
+    {
+      title: 'User Email',
+      dataIndex: 'userEmail',
+      key: 'userEmail',
+    },
+    {
+      title: 'Action',
+      key: 'x',
+      render: (item: member) => (
+        <div className="flex space-x-2">
+          <antd.Button
+            danger
+            disabled={!projectService.getAuth(appCtx.user?.email || '', 'editAdmin')}
+            onClick={() => removeMember(item.userEmail)}
+          >
+            Delete
+          </antd.Button>
+        </div>
+      ),
+    },
+  ];
 
-  const changeName = () => {
-    const projectName = prompt('修改專案名稱: ');
+  const changeName = async () => {
+    const projectName = prompt('修改專案名稱: ', project.projectName);
     if (projectName) {
-      setProjectName(projectName);
       if (rfInstance) {
         const flow = rfInstance.toObject();
-        projectService.setProject({ id: project.id, flow, projectName });
+        await projectService.setProject({ id: project.id, flow, projectName });
+        refresh();
       }
+    }
+  };
+
+  const addMember = async () => {
+    const { value: email } = await Swal.fire({
+      title: "Please input user's email",
+      input: 'email',
+      inputPlaceholder: 'Enter your email address',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Email address is required';
+        }
+        return null;
+      },
+    });
+    const { value: role } = await Swal.fire({
+      title: 'Select member role',
+      input: 'select',
+      inputOptions: {
+        users: 'users',
+        readers: 'readers',
+      },
+      showCancelButton: true,
+    });
+
+    await projectService.addMember(role, email);
+    refresh();
+  };
+
+  const removeMember = async (email: string) => {
+    const { isDenied } = await Swal.fire({
+      title: `Delete Member ${email}?`,
+      showConfirmButton: false,
+      showDenyButton: true,
+      showCancelButton: true,
+      denyButtonText: `Don't save`,
+    });
+
+    if (isDenied) {
+      await projectService.removeMember(email);
+      refresh();
     }
   };
 
@@ -79,11 +112,17 @@ const Admin = ({ project, rfInstance }: { project: Project; rfInstance: any }) =
       <antd.Collapse className="bg-white flex-1">
         <antd.Collapse.Panel header="管理" key="1">
           <div className="m-2">
-            <div className="flex justify-between ">
+            <div className="flex justify-between mb-2">
               <antd.Button onClick={changeName} type="primary">
-                {'專案: ' + projectName}
+                {'專案: ' + project.projectName}
               </antd.Button>
-              <antd.Button type="primary">Add Member</antd.Button>
+              <antd.Button
+                type="primary"
+                disabled={!projectService.getAuth(appCtx.user?.email || '', 'editAdmin')}
+                onClick={addMember}
+              >
+                Add Member
+              </antd.Button>
             </div>
             <antd.Table
               scroll={{ x: 800 }}

@@ -1,12 +1,9 @@
 import React from 'react';
-import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
 import * as antd from 'antd';
 
 interface AppContextProps {
   user: User | undefined;
-  //   firestore: Firestore;
   setModal: React.Dispatch<any>;
 }
 
@@ -28,11 +25,11 @@ const AppProvider = ({ children }: AppProviderProps) => {
   const init = async () => {
     try {
       const auth = getAuth();
-      onAuthStateChanged(auth, (user) => {
+      onAuthStateChanged(auth, async (user) => {
         if (user) {
           setUser(user);
-          const uid = user.uid;
-          console.log({ uid });
+          // const uid = user.uid;
+          // console.log({ uid, token: await user.getIdToken() });
         } else {
           // User is signed out
           // ...

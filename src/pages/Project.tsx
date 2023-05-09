@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useMemo } from 'react';
 import * as antd from 'antd';
 import ReactFlow, {
   useNodesState,
@@ -15,10 +15,10 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import { useParams, Link } from 'react-router-dom';
-import { getProject, setProject, Project } from '../utils/firestore';
+import { ProjectService, Project } from '../utils/firestore';
 import { AppContext } from '../AppContext';
 import Sidebar from '../components/SideBar';
-import Members from '../components/Admin';
+import Admin from '../components/Admin';
 
 const initialNodes = [
   {
@@ -56,7 +56,8 @@ const AddNodeOnEdgeDrop = () => {
 
   const [rfInstance, setRfInstance] = React.useState<any>(null);
   const [projectName, setProjectName] = React.useState<string>('');
-  const [pro, setPro] = React.useState<Project>();
+  const [projectService, setProjectService] = React.useState<ProjectService>();
+  const [debug, setDebug] = React.useState<boolean>(false);
 
   const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), []);
 
@@ -66,26 +67,29 @@ const AddNodeOnEdgeDrop = () => {
 
   const { projectId } = useParams();
 
-  const init = async () => {
-    if (appCtx.user && projectId) {
-      const project = await getProject(projectId);
-      if (project) {
-        const { projectName, flow } = project;
-        setPro(project);
-        setProjectName(projectName);
-        if (flow) {
-          const { x = 0, y = 0, zoom = 1 } = flow.viewport;
-          console.log({ x, y, zoom });
-          setViewport({ x, y, zoom });
-          setNodes(flow.nodes || []);
-          setEdges(flow.edges || []);
-        }
+  const init = useCallback(async () => {
+    const projectService = new ProjectService(projectId || '');
+    await projectService.init();
+    setProjectService(projectService);
+    const project = projectService.getProject();
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.project = project;
+    if (project) {
+      const { projectName, flow } = project;
+      setProjectName(projectName);
+      if (flow) {
+        const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+        setViewport({ x, y, zoom });
+        setNodes(flow.nodes || []);
+        setEdges(flow.edges || []);
       }
     }
-  };
+  }, [projectId, setEdges, setNodes, setViewport]);
+
   React.useEffect(() => {
     init();
-  }, [projectId, appCtx.user, project]);
+  }, [projectId, appCtx.user, project, init]);
 
   const onConnectEnd = useCallback(
     (event: any) => {
@@ -129,23 +133,10 @@ const AddNodeOnEdgeDrop = () => {
       // localStorage.setItem('temp', JSON.stringify(flow));
 
       if (appCtx.user && projectId) {
-        await setProject({ id: projectId, flow, projectName });
+        await projectService?.setProject({ id: projectId, flow, projectName });
       }
     }
   }, [rfInstance, projectName]);
-
-  const changeName = () => {
-    const projectName = prompt('修改專案名稱: ');
-    if (projectName) {
-      setProjectName(projectName);
-      if (rfInstance) {
-        const flow = rfInstance.toObject();
-        if (appCtx.user && projectId) {
-          setProject({ id: projectId, flow, projectName });
-        }
-      }
-    }
-  };
 
   const onNodeDragStart = (_: React.MouseEvent<Element, MouseEvent>, node: Node) => {
     preX = node.position.x;
@@ -165,7 +156,6 @@ const AddNodeOnEdgeDrop = () => {
     preX = node.position.x;
     preY = node.position.y;
 
-    // const changeNodeIds = findChildNodes(node.id).map((node) => node.id);
     const newNodes = nodes.map((nd) => {
       if (changeNodeIds.includes(nd.id) || nd.id === node.id) {
         return { ...nd, position: { x: nd.position.x + dx, y: nd.position.y + dy } };
@@ -175,25 +165,27 @@ const AddNodeOnEdgeDrop = () => {
     setNodes(newNodes);
   };
 
-  const [debug, setDebug] = React.useState<boolean>(false);
-
   return (
     <div className="flex h-screen">
       <div className="flex-1 bg-black" ref={reactFlowWrapper}>
-        {pro && <Members project={pro} rfInstance={rfInstance} />}
-        <div className="flex fixed right-0 z-10 space-x-0">
-          <antd.Button type="primary" onClick={onSave}>
-            save
-          </antd.Button>
-          <antd.Button type="primary">
-            <Link to={'/projects'}>GoBack</Link>
-          </antd.Button>
-          <antd.Button
-            type="primary"
-            onClick={() => {
-              setDebug(!debug);
-            }}
-          >
+        {appCtx.user && projectService && (
+          <Admin projectService={projectService} rfInstance={rfInstance} refresh={init} />
+        )}
+        <div className="flex fixed right-0 z-10 space-x-2">
+          {appCtx.user &&
+            projectService &&
+            projectService?.getAuth(appCtx.user.email || '', 'save') && (
+              <antd.Button type="primary" onClick={onSave}>
+                save
+              </antd.Button>
+            )}
+
+          {appCtx.user && (
+            <antd.Button type="primary">
+              <Link to={'/projects'}>Home</Link>
+            </antd.Button>
+          )}
+          <antd.Button type="primary" onClick={() => setDebug(!debug)}>
             Show Debug
           </antd.Button>
         </div>
