@@ -81,7 +81,7 @@ const AddNodeOnEdgeDrop = () => {
 
   return (
     <div className="flex h-screen">
-      <div className="flex-1 bg-slate-800">
+      <div className="flex-1">
         {appCtx.user && projectService && (
           <Admin projectService={projectService} rfInstance={rfInstance} refresh={init} />
         )}
@@ -109,6 +109,7 @@ const AddNodeOnEdgeDrop = () => {
           initialEdges={edges}
           initialViewport={getViewport()}
           setRfInstance={setRfInstance}
+          rfInstance={rfInstance}
         />
       </div>
       {debug && (

@@ -1,5 +1,4 @@
 import React, { useCallback, useRef } from 'react';
-
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -16,6 +15,8 @@ import ReactFlow, {
   Viewport,
 } from 'reactflow';
 
+import { nodeTypes } from './NodeTypes';
+
 const defaultNodes: Node[] = [
   {
     id: '0',
@@ -27,9 +28,9 @@ const defaultNodes: Node[] = [
   },
 ];
 
-const getNewNode = (position: XYPosition): Node => {
+const getNewNode = (position: XYPosition, type = 'default'): Node => {
   const id = `${+new Date()}`;
-  return { id, data: { label: `Node ${id}` }, position };
+  return { id, data: { label: `Node ${id}` }, position, type };
 };
 
 const fitViewOptions = { padding: 3 };
@@ -43,11 +44,13 @@ const Flow = ({
   initialNodes = defaultNodes,
   initialEdges,
   initialViewport,
+  rfInstance,
   setRfInstance,
 }: {
   initialNodes?: Node[];
   initialEdges?: Edge[];
   initialViewport?: Viewport;
+  rfInstance?: any;
   setRfInstance?: React.Dispatch<any>;
 }) => {
   ////////////////////////////////////     功能     ////////////////////////////////////
@@ -55,6 +58,7 @@ const Flow = ({
   //////////////////////////////////     Setting     //////////////////////////////////
   const reactFlowWrapper = useRef<HTMLDivElement | null>(null);
   const connectingNodeId = useRef<string | null>('');
+  const connectingHandleId = useRef<string | null>('');
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { setViewport, project: rfProject } = useReactFlow();
@@ -75,8 +79,9 @@ const Flow = ({
   );
 
   const onConnectStart = useCallback(
-    (_: React.MouseEvent | React.TouchEvent, { nodeId }: OnConnectStartParams) => {
+    (_: React.MouseEvent | React.TouchEvent, { nodeId, handleId }: OnConnectStartParams) => {
       connectingNodeId.current = nodeId;
+      connectingHandleId.current = handleId;
     },
     [],
   );
@@ -100,6 +105,7 @@ const Flow = ({
             id: newNode.id,
             source: connectingNodeId.current || '',
             target: newNode.id,
+            sourceHandle: connectingHandleId.current || undefined,
           }),
         );
       }
@@ -113,6 +119,19 @@ const Flow = ({
     if (label) {
       const updatedNode = { ...node, data: { ...node.data, label } };
       setNodes((els) => els.map((el) => (el.id === updatedNode.id ? updatedNode : el)));
+    }
+  };
+
+  const onEdgeDoubleClick = (_: React.MouseEvent, edge: any) => {
+    const newLabel = prompt('Enter new label for edge:', edge.label);
+    if (newLabel !== null) {
+      const newEdges = edges.map((el) => {
+        if (el.id === edge.id) {
+          el.label = newLabel;
+        }
+        return el;
+      });
+      setEdges(newEdges);
     }
   };
 
@@ -143,12 +162,39 @@ const Flow = ({
     setNodes(newNodes);
   };
 
+  const onDragOver = useCallback((event: any) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: any) => {
+      event.preventDefault();
+
+      // eslint-disable-next-line no-unsafe-optional-chaining
+      const reactFlowBounds = reactFlowWrapper?.current?.getBoundingClientRect();
+      const type = event.dataTransfer.getData('application/reactflow');
+
+      if (typeof type === 'undefined' || !type || !reactFlowBounds) return;
+
+      const position = rfInstance.project({
+        x: event.clientX - reactFlowBounds.left - 75,
+        y: event.clientY - reactFlowBounds.top - 20,
+      });
+
+      setNodes((nds) => nds.concat(getNewNode(position, type)));
+    },
+    [rfInstance, setNodes],
+  );
+
   return (
     <div className="flex h-screen bg-slate-800" ref={reactFlowWrapper}>
+      <ToolBox />
       <ReactFlow
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDoubleClick={onNodeDoubleClick}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -159,6 +205,9 @@ const Flow = ({
         fitView
         fitViewOptions={fitViewOptions}
         onInit={setRfInstance}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        nodeTypes={nodeTypes}
       >
         <Controls />
         <MiniMap style={minimapStyle} zoomable pannable />
@@ -167,5 +216,50 @@ const Flow = ({
     </div>
   );
 };
+
+function ToolBox() {
+  const onDragStart = (event: any, nodeType: string) => {
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  return (
+    <div
+      className="fixed left-0 p-2 m-1 transform -translate-y-1/2 bg-white rounded-lg shadow-lg top-1/2"
+      style={{ zIndex: 9999 }}
+    >
+      <div className="mx-2 my-1 text-xl font-bold">Tool Box</div>
+      <div
+        className="items-center justify-center p-1 my-1 text-xl border border-black border-solid rounded-md"
+        onDragStart={(event) => onDragStart(event, 'default')}
+        draggable
+      >
+        Node
+      </div>
+      <div
+        className="items-center justify-center p-1 my-1 text-xl border border-black border-solid rounded-md"
+        onDragStart={(event) => onDragStart(event, 'input')}
+        draggable
+      >
+        Input Node
+      </div>
+      <div
+        className="items-center justify-center p-1 my-1 text-xl border border-black border-solid rounded-md"
+        onDragStart={(event) => onDragStart(event, 'output')}
+        draggable
+      >
+        Output Node
+      </div>
+
+      <div
+        className="items-center justify-center p-1 my-1 text-xl border border-black border-solid rounded-md"
+        onDragStart={(event) => onDragStart(event, 'diamondNode')}
+        draggable
+      >
+        Diamond Node
+      </div>
+    </div>
+  );
+}
 
 export default Flow;
