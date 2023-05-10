@@ -1,16 +1,13 @@
-import React, { useCallback, useRef } from 'react';
-import { AppContext } from '../AppContext';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Flow from '../components/Flow';
-
 import { ReactFlowProvider } from 'reactflow';
 
+import { AppContext } from '../AppContext';
+import Flow from '../components/Flow';
+
 function App() {
-  const auth = getAuth();
   const appCtx = React.useContext(AppContext);
 
-  const provider = new GoogleAuthProvider();
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -36,25 +33,7 @@ function App() {
           <button
             type="button"
             className="block w-full px-4 py-3 font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:bg-gray-100"
-            onClick={() =>
-              signInWithPopup(auth, provider)
-                .then((result) => {
-                  const credential = GoogleAuthProvider.credentialFromResult(result);
-                  if (credential) {
-                    const token = credential.accessToken;
-                    const user = result.user;
-                    console.log({ user, token });
-                    // navigate('/projects');
-                  }
-                })
-                .catch((error) => {
-                  const errorCode = error.code;
-                  const errorMessage = error.message;
-                  const email = error.customData.email;
-                  const credential = GoogleAuthProvider.credentialFromError(error);
-                  console.log({ errorCode, errorMessage, credential, email });
-                })
-            }
+            onClick={appCtx.signIn}
           >
             <div className="flex items-center justify-center">
               <svg

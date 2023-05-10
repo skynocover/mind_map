@@ -36,8 +36,7 @@ const AppProvider = ({ children }: AppProviderProps) => {
       onAuthStateChanged(auth, async (user) => {
         if (user) {
           setUser(user);
-          // const uid = user.uid;
-          // console.log({ uid, token: await user.getIdToken() });
+          console.log({ uid: user.uid, token: await user.getIdToken() });
         } else {
           // User is signed out
           // ...
@@ -70,6 +69,7 @@ const AppProvider = ({ children }: AppProviderProps) => {
 
   const signOut = async () => {
     await auth.signOut();
+    setUser(undefined);
   };
 
   /////////////////////////////////////////////////////

@@ -1,5 +1,6 @@
 import React from 'react';
 import * as antd from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 import { AppContext } from '../AppContext';
 
@@ -24,6 +25,13 @@ export const Header = () => {
     setOpen(newOpen);
   };
 
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    if (!appCtx.user) {
+      navigate('/login');
+    }
+  }, [appCtx.user, navigate]);
+
   return (
     <>
       <header className="w-full text-gray-100 bg-gray-900 shadow body-font">
@@ -45,7 +53,7 @@ export const Header = () => {
                   open={open}
                   onOpenChange={handleOpenChange}
                 >
-                  <antd.Button className="h-10 pl-5 pr-5 text-blue-400 bg-gray-900  rounded-full appearance-non focus:outline-none">
+                  <antd.Button className="h-10 pl-5 pr-5 text-blue-400 bg-gray-900 rounded-full appearance-non focus:outline-none">
                     {appCtx.user.displayName}
                   </antd.Button>
                 </antd.Popover>
