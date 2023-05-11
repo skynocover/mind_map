@@ -17,6 +17,7 @@ import { AppContext } from '../AppContext';
 import Sidebar from '../components/SideBar';
 import Admin from '../components/Admin';
 import Flow from '../components/Flow';
+import { useProjectService } from '../hooks/useProjectService';
 
 const initialNodes = [
   {
@@ -37,59 +38,48 @@ const AddNodeOnEdgeDrop = () => {
   const { getViewport, setViewport } = useReactFlow();
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance>();
 
-  const [projectService, setProjectService] = React.useState<ProjectService>();
-  const [project, setProject] = React.useState<Project>();
-
   const [debug, setDebug] = React.useState<boolean>(false);
 
-  const { projectId } = useParams();
+  const { projectId = '' } = useParams();
+  // 使用Hook整理 code
+  const { projectService, project, updateProject, getAuth, refresh } = useProjectService(projectId);
 
-  const init = useCallback(async () => {
-    const projectService = new ProjectService(projectId || '');
-    await projectService.init();
-    setProjectService(projectService);
-
-    const project = projectService.getProject();
-    setProject(project);
+  React.useEffect(() => {
     // TODO: 刪除
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     window.project = project;
 
-    const { flow } = project;
-    if (flow) {
-      const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+    if (project?.flow) {
+      const { x = 0, y = 0, zoom = 1 } = project.flow.viewport;
       setViewport({ x, y, zoom });
-      setNodes(flow.nodes || []);
-      setEdges(flow.edges || []);
+      setNodes(project.flow.nodes || []);
+      setEdges(project.flow.edges || []);
     }
-  }, [projectId, setEdges, setNodes, setViewport]);
-
-  React.useEffect(() => {
-    init();
-  }, [init]);
+  }, [project, setEdges, setNodes, setViewport]);
 
   const onSave = useCallback(async () => {
-    if (rfInstance && projectService && project) {
+    if (rfInstance && project) {
       const flow = rfInstance.toObject();
-      await projectService.updateProject({ ...project, flow });
+      await updateProject({ ...project, flow });
     }
-  }, [project, projectService, rfInstance]);
+  }, [project, rfInstance, updateProject]);
+
+  // 避免projectService在每次重新渲染時重新創建
+  const ps = React.useMemo(() => projectService, [projectService]);
 
   return (
     <div className="flex h-screen">
       <div className="flex-1">
-        {appCtx.user && projectService && (
-          <Admin projectService={projectService} rfInstance={rfInstance} refresh={init} />
+        {ps && getAuth(appCtx.user?.email || '', 'readAdmin') && (
+          <Admin projectService={ps} rfInstance={rfInstance} refresh={refresh} />
         )}
         <div className="fixed right-0 z-10 flex space-x-2">
-          {appCtx.user &&
-            projectService &&
-            projectService.getAuth(appCtx.user.email || '', 'save') && (
-              <antd.Button type="primary" onClick={onSave}>
-                save
-              </antd.Button>
-            )}
+          {getAuth(appCtx.user?.email || '', 'save') && (
+            <antd.Button type="primary" onClick={onSave}>
+              save
+            </antd.Button>
+          )}
 
           {appCtx.user && (
             <antd.Button type="primary">
@@ -109,9 +99,7 @@ const AddNodeOnEdgeDrop = () => {
           rfInstance={rfInstance}
         />
       </div>
-      {projectService && (
-        <Sidebar nodes={nodes} project={projectService.getProject()} show={debug} />
-      )}
+      {project && <Sidebar nodes={nodes} project={project} show={debug} />}
     </div>
   );
 };

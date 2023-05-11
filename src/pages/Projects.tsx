@@ -19,7 +19,7 @@ const Projects = () => {
     } else {
       navigate('/login');
     }
-  }, [appCtx.user]);
+  }, [appCtx.user, navigate]);
 
   React.useEffect(() => {
     init();
