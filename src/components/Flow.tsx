@@ -13,6 +13,8 @@ import ReactFlow, {
   Background,
   OnConnectStartParams,
   Viewport,
+  OnInit,
+  ReactFlowInstance,
 } from 'reactflow';
 
 import { nodeTypes } from './NodeTypes';
@@ -39,6 +41,7 @@ const minimapStyle = { height: 100 };
 let preX = 0;
 let preY = 0;
 let changeNodeIds: string[] = [];
+let connecting = false;
 
 const Flow = ({
   initialNodes = defaultNodes,
@@ -50,8 +53,8 @@ const Flow = ({
   initialNodes?: Node[];
   initialEdges?: Edge[];
   initialViewport?: Viewport;
-  rfInstance?: any;
-  setRfInstance?: React.Dispatch<any>;
+  rfInstance?: ReactFlowInstance;
+  setRfInstance?: OnInit<Node, Edge> | undefined;
 }) => {
   ////////////////////////////////////     功能     ////////////////////////////////////
 
@@ -74,7 +77,10 @@ const Flow = ({
   }, [initialNodes, initialEdges, initialViewport, setNodes, setEdges, setViewport]);
 
   const onConnect = useCallback(
-    (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Edge | Connection) => {
+      connecting = true;
+      setEdges((eds) => addEdge(params, eds));
+    },
     [setEdges],
   );
 
@@ -90,7 +96,7 @@ const Flow = ({
     (event: any) => {
       const targetIsPane = event.target.classList.contains('react-flow__pane');
 
-      if (targetIsPane && reactFlowWrapper?.current) {
+      if (targetIsPane && reactFlowWrapper?.current && !connecting) {
         const { top, left } = reactFlowWrapper.current.getBoundingClientRect() || {
           top: 0,
           left: 0,
@@ -109,6 +115,7 @@ const Flow = ({
           }),
         );
       }
+      connecting = false;
     },
     [rfProject, setEdges, setNodes],
   );
@@ -175,7 +182,7 @@ const Flow = ({
       const reactFlowBounds = reactFlowWrapper?.current?.getBoundingClientRect();
       const type = event.dataTransfer.getData('application/reactflow');
 
-      if (typeof type === 'undefined' || !type || !reactFlowBounds) return;
+      if (typeof type === 'undefined' || !type || !reactFlowBounds || !rfInstance) return;
 
       const position = rfInstance.project({
         x: event.clientX - reactFlowBounds.left - 75,
@@ -224,10 +231,7 @@ function ToolBox() {
   };
 
   return (
-    <div
-      className="fixed left-0 p-2 m-1 transform -translate-y-1/2 bg-white rounded-lg shadow-lg top-1/2"
-      style={{ zIndex: 9999 }}
-    >
+    <div className="fixed left-0 z-20 p-2 m-1 transform -translate-y-1/2 bg-white rounded-lg shadow-lg top-1/2">
       <div className="mx-2 my-1 text-xl font-bold">Tool Box</div>
       <div
         className="items-center justify-center p-1 my-1 text-xl border border-black border-solid rounded-md"

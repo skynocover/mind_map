@@ -113,8 +113,8 @@ const Admin = ({
   };
 
   return (
-    <div className="flex fixed z-10">
-      <antd.Collapse className="bg-white flex-1">
+    <div className="fixed z-30 flex">
+      <antd.Collapse className="flex-1 bg-white">
         <antd.Collapse.Panel header="管理" key="1">
           <div className="m-2">
             <div className="flex justify-between mb-2">

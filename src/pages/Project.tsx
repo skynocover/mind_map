@@ -1,7 +1,13 @@
 import React, { useCallback } from 'react';
 import * as antd from 'antd';
 
-import { useNodesState, useEdgesState, useReactFlow, ReactFlowProvider } from 'reactflow';
+import {
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
+  ReactFlowInstance,
+} from 'reactflow';
 import 'reactflow/dist/style.css';
 
 import { useParams, Link } from 'react-router-dom';
@@ -29,7 +35,7 @@ const AddNodeOnEdgeDrop = () => {
   const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges, setEdges] = useEdgesState([]);
   const { getViewport, setViewport, project: rfProject } = useReactFlow();
-  const [rfInstance, setRfInstance] = React.useState<any>(null);
+  const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance>();
 
   const [projectName, setProjectName] = React.useState<string>('');
   const [projectService, setProjectService] = React.useState<ProjectService>();
@@ -112,9 +118,9 @@ const AddNodeOnEdgeDrop = () => {
           rfInstance={rfInstance}
         />
       </div>
-      {debug && (
+      {debug && projectService && (
         <div className="w-96">
-          <Sidebar nodes={nodes} setNodes={setNodes} />
+          <Sidebar nodes={nodes} project={projectService.getProject()} />
         </div>
       )}
     </div>
