@@ -94,6 +94,7 @@ const Flow = ({
 
   const onConnectEnd = useCallback(
     (event: any) => {
+      // 如果拖曳到的是面板上就新增
       const targetIsPane = event.target.classList.contains('react-flow__pane');
 
       if (targetIsPane && reactFlowWrapper?.current && !connecting) {
@@ -151,7 +152,7 @@ const Flow = ({
     preX = node.position.x;
     preY = node.position.y;
     // 取得所有需要改變的子node
-    changeNodeIds = findChildNodes(node.id).map((node) => node.id);
+    changeNodeIds = findChildNodes(node.id).map((node) => node.target);
   };
 
   const onNodeDrag = (_: React.MouseEvent<Element, MouseEvent>, node: Node) => {
