@@ -12,7 +12,7 @@ import 'reactflow/dist/style.css';
 
 import { useParams, Link } from 'react-router-dom';
 
-import { ProjectService } from '../utils/firestore';
+import { ProjectService, Project } from '../utils/firestore';
 import { AppContext } from '../AppContext';
 import Sidebar from '../components/SideBar';
 import Admin from '../components/Admin';
@@ -34,11 +34,12 @@ const AddNodeOnEdgeDrop = () => {
 
   const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges, setEdges] = useEdgesState([]);
-  const { getViewport, setViewport, project: rfProject } = useReactFlow();
+  const { getViewport, setViewport } = useReactFlow();
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance>();
 
-  const [projectName, setProjectName] = React.useState<string>('');
   const [projectService, setProjectService] = React.useState<ProjectService>();
+  const [project, setProject] = React.useState<Project>();
+
   const [debug, setDebug] = React.useState<boolean>(false);
 
   const { projectId } = useParams();
@@ -49,14 +50,13 @@ const AddNodeOnEdgeDrop = () => {
     setProjectService(projectService);
 
     const project = projectService.getProject();
+    setProject(project);
     // TODO: 刪除
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     window.project = project;
 
-    const { projectName, flow } = project;
-    setProjectName(projectName);
-
+    const { flow } = project;
     if (flow) {
       const { x = 0, y = 0, zoom = 1 } = flow.viewport;
       setViewport({ x, y, zoom });
@@ -67,23 +67,14 @@ const AddNodeOnEdgeDrop = () => {
 
   React.useEffect(() => {
     init();
-  }, [projectId, appCtx.user, rfProject, init]);
+  }, [init]);
 
   const onSave = useCallback(async () => {
-    if (rfInstance) {
+    if (rfInstance && projectService && project) {
       const flow = rfInstance.toObject();
-
-      if (projectService) {
-        const project = projectService.getProject();
-        await projectService?.updateProject({
-          id: project.id,
-          flow,
-          projectName,
-          public: project.public,
-        });
-      }
+      await projectService.updateProject({ ...project, flow });
     }
-  }, [rfInstance, projectService, projectName]);
+  }, [project, projectService, rfInstance]);
 
   return (
     <div className="flex h-screen">
@@ -94,7 +85,7 @@ const AddNodeOnEdgeDrop = () => {
         <div className="fixed right-0 z-10 flex space-x-2">
           {appCtx.user &&
             projectService &&
-            projectService?.getAuth(appCtx.user.email || '', 'save') && (
+            projectService.getAuth(appCtx.user.email || '', 'save') && (
               <antd.Button type="primary" onClick={onSave}>
                 save
               </antd.Button>
@@ -118,10 +109,8 @@ const AddNodeOnEdgeDrop = () => {
           rfInstance={rfInstance}
         />
       </div>
-      {debug && projectService && (
-        <div className="w-96">
-          <Sidebar nodes={nodes} project={projectService.getProject()} />
-        </div>
+      {projectService && (
+        <Sidebar nodes={nodes} project={projectService.getProject()} show={debug} />
       )}
     </div>
   );
