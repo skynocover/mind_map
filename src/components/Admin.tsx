@@ -1,25 +1,20 @@
 import * as antd from 'antd';
 import React from 'react';
-
 import Swal from 'sweetalert2';
+
 import { AppContext } from '../AppContext';
 import { ProjectService } from '../utils/firestore';
+import { FlowContext } from '../components/FlowContext';
 
 interface member {
   userEmail: string;
   role: string;
 }
 
-const Admin = ({
-  projectService,
-  rfInstance,
-  refresh,
-}: {
-  projectService: ProjectService;
-  rfInstance: any;
-  refresh: any;
-}) => {
+const Admin = ({ projectService, refresh }: { projectService: ProjectService; refresh: any }) => {
   const appCtx = React.useContext(AppContext);
+  const { rfInstance } = React.useContext(FlowContext);
+
   const project = projectService.getProject();
 
   const members: member[] = [];

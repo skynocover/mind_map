@@ -1,9 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import ReactFlow, {
-  useNodesState,
-  useEdgesState,
   addEdge,
-  useReactFlow,
   Controls,
   Node,
   Edge,
@@ -12,23 +9,14 @@ import ReactFlow, {
   MiniMap,
   Background,
   OnConnectStartParams,
-  Viewport,
-  OnInit,
-  ReactFlowInstance,
 } from 'reactflow';
 
-import { nodeTypes } from './NodeTypes';
+import { DiamondNode } from './NodeTypes/DiamondNode';
+import { FlowContext } from '../components/FlowContext';
 
-const defaultNodes: Node[] = [
-  {
-    id: '0',
-    type: 'input',
-    data: { label: 'Node' },
-    position: { x: 0, y: 50 },
-    width: 150,
-    height: 40,
-  },
-];
+const nodeTypes = {
+  diamondNode: DiamondNode,
+};
 
 const getNewNode = (position: XYPosition, type = 'default'): Node => {
   const id = `${+new Date()}`;
@@ -43,38 +31,25 @@ let preY = 0;
 let changeNodeIds: string[] = [];
 let connecting = false;
 
-const Flow = ({
-  initialNodes = defaultNodes,
-  initialEdges,
-  initialViewport,
-  rfInstance,
-  setRfInstance,
-}: {
-  initialNodes?: Node[];
-  initialEdges?: Edge[];
-  initialViewport?: Viewport;
-  rfInstance?: ReactFlowInstance;
-  setRfInstance?: OnInit<Node, Edge> | undefined;
-}) => {
+const Flow = () => {
   ////////////////////////////////////     功能     ////////////////////////////////////
 
   //////////////////////////////////     Setting     //////////////////////////////////
   const reactFlowWrapper = useRef<HTMLDivElement | null>(null);
   const connectingNodeId = useRef<string | null>('');
   const connectingHandleId = useRef<string | null>('');
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { setViewport, project: rfProject } = useReactFlow();
 
-  React.useEffect(() => {
-    setNodes(initialNodes);
-    if (initialEdges) {
-      setEdges(initialEdges);
-    }
-    if (initialViewport) {
-      setViewport(initialViewport);
-    }
-  }, [initialNodes, initialEdges, initialViewport, setNodes, setEdges, setViewport]);
+  const {
+    nodes,
+    setNodes,
+    edges,
+    setEdges,
+    rfInstance,
+    setRfInstance,
+    rfProject,
+    onNodesChange,
+    onEdgesChange,
+  } = React.useContext(FlowContext);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {

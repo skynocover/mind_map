@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ReactFlowProvider } from 'reactflow';
 
 import { AppContext } from '../AppContext';
 import Flow from '../components/Flow';
@@ -19,9 +18,7 @@ function App() {
   return (
     <section className="flex flex-col items-center h-screen md:flex-row">
       <div className="hidden w-full h-screen bg-indigo-600 lg:block md:w-1/2 xl:w-2/3">
-        <ReactFlowProvider>
-          <Flow />
-        </ReactFlowProvider>
+        <Flow />
       </div>
 
       <div className="flex items-center justify-center w-full h-screen px-6 bg-white md:max-w-md lg:max-w-full md:mx-0 md:w-1/2 xl:w-1/3 lg:px-16 xl:px-12">

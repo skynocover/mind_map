@@ -23,12 +23,12 @@ export const useProjectService = (projectId: string) => {
 
   const updateProject = async (project: Project) => {
     if (projectService) {
-      projectService.updateProject(project);
+      await projectService.updateProject(project);
     }
   };
 
   const getAuth = (email: string, auth: string) => {
-    return projectService ? projectService.getAuth(email, auth) : false;
+    return projectService?.getAuth(email, auth);
   };
 
   return { projectService, updateProject, getAuth, refresh, project: project.current };
