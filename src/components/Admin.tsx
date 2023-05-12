@@ -1,4 +1,5 @@
 import * as antd from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import React from 'react';
 import Swal from 'sweetalert2';
 
@@ -11,9 +12,15 @@ interface member {
   role: string;
 }
 
-const Admin = ({ projectService, refresh }: { projectService: ProjectService; refresh: any }) => {
+const Admin = ({
+  projectService,
+  refresh,
+}: {
+  projectService: ProjectService;
+  refresh: () => void;
+}) => {
   const appCtx = React.useContext(AppContext);
-  const { rfInstance } = React.useContext(FlowContext);
+  const { setNodes, setEdges, setViewport, rfInstance } = React.useContext(FlowContext);
 
   const project = projectService.getProject();
 
@@ -107,15 +114,61 @@ const Admin = ({ projectService, refresh }: { projectService: ProjectService; re
     }
   };
 
+  const downloadJsonFile = () => {
+    if (rfInstance) {
+      const flow = rfInstance.toObject();
+      const jsonStr = JSON.stringify(flow);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = 'mindMap.json';
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const { nodes, edges, viewport } = JSON.parse(event.target?.result as string);
+        setNodes(nodes);
+        setEdges(edges);
+        setViewport(viewport);
+      } catch (error) {
+        console.error('Failed to parse JSON file', error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="fixed z-30 flex">
       <antd.Collapse className="flex-1 bg-white">
         <antd.Collapse.Panel header="管理" key="1">
           <div className="m-2">
             <div className="flex justify-between mb-2">
-              <antd.Button onClick={changeName} type="primary">
-                {'專案: ' + project.projectName}
-              </antd.Button>
+              <div className="space-x-2">
+                <antd.Button onClick={changeName} type="primary">
+                  {'專案: ' + project.projectName}
+                </antd.Button>
+                <antd.Button onClick={downloadJsonFile} type="primary">
+                  Export mind map
+                </antd.Button>
+                <antd.Upload
+                  accept=".json"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    handleFileUpload(file);
+                    return false;
+                  }}
+                >
+                  <antd.Button type="primary" icon={<UploadOutlined />}>
+                    Import mind map
+                  </antd.Button>
+                </antd.Upload>
+              </div>
               <antd.Button
                 type="primary"
                 disabled={!projectService.getAuth(appCtx.user?.email || '', 'editAdmin')}

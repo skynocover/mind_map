@@ -31,6 +31,8 @@ interface FlowContextProps {
   rfInstance: ReactFlowInstance | undefined;
   setRfInstance: React.Dispatch<React.SetStateAction<ReactFlowInstance | undefined>>;
   rfProject: Project;
+
+  initNodes: () => void;
 }
 
 const FlowContext = React.createContext<FlowContextProps>(undefined!);
@@ -56,12 +58,10 @@ const FlowProvider = ({ children }: AppProviderProps) => {
   const { getViewport, setViewport, project: rfProject } = useReactFlow();
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance>();
 
-  React.useEffect(() => {
-    init();
-  }, []);
-
-  const init = async () => {
-    console.log();
+  const initNodes = () => {
+    setNodes(initialNodes);
+    setEdges([]);
+    setViewport({ x: 0, y: 0, zoom: 1 });
   };
 
   /////////////////////////////////////////////////////
@@ -80,6 +80,7 @@ const FlowProvider = ({ children }: AppProviderProps) => {
         rfProject,
         onNodesChange,
         onEdgesChange,
+        initNodes,
       }}
     >
       {children}

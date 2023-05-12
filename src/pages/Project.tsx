@@ -11,7 +11,7 @@ import { FlowContext } from '../components/FlowContext';
 
 const AddNodeOnEdgeDrop = () => {
   const appCtx = React.useContext(AppContext);
-  const { setNodes, setEdges, setViewport, rfInstance } = React.useContext(FlowContext);
+  const { setNodes, setEdges, setViewport, rfInstance, initNodes } = React.useContext(FlowContext);
 
   const [debug, setDebug] = React.useState<boolean>(false);
 
@@ -30,6 +30,8 @@ const AddNodeOnEdgeDrop = () => {
       setViewport({ x, y, zoom });
       setNodes(project.flow.nodes || []);
       setEdges(project.flow.edges || []);
+    } else {
+      initNodes();
     }
   }, [project, setEdges, setNodes, setViewport]);
 
